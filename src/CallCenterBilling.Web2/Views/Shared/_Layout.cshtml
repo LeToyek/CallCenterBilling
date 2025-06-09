@@ -1,0 +1,359 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - CallCenterBilling.Web</title>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/CallCenterBilling.Web.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <style>
+       
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h6 class="text-muted mb-0 fw-bold">
+                <i class="fas fa-layer-group me-2"></i>
+                Navigation Menu
+            </h6>
+        </div>
+        <ul class="sidebar-nav" id="sidebarNav">
+            <!-- Menu items will be populated by JavaScript -->
+        </ul>
+    </nav>
+
+    <!-- Top Navbar -->
+    <header>
+        <nav class="navbar navbar-expand-lg fixed-top">
+            <div class="container-fluid">
+                <button class="sidebar-toggle me-3" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <a class="navbar-brand" href="@Url.Action("Index", "Home")">
+                    <i class="fas fa-phone-alt me-2"></i>
+                    CallCenter Pro
+                </a>
+                
+                <div class="navbar-nav ms-auto">
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <div class="nav-item dropdown profile-dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <div class="user-avatar">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="d-none d-md-block">
+                                    <div class="fw-bold">@(User.Identity.Name ?? "User")</div>
+                                    <small class="text-light opacity-75">Administrator</small>
+                                </div>
+                                <i class="fas fa-chevron-down ms-2"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <a class="dropdown-item" href="@Url.Action("Profile", "Account")">
+                                        <i class="fas fa-user me-3"></i>
+                                        My Profile
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="#">
+                                        <i class="fas fa-cog me-3"></i>
+                                        Account Settings
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="#">
+                                        <i class="fas fa-bell me-3"></i>
+                                        Notifications
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline w-100">
+                                        <button type="submit" class="dropdown-item text-danger">
+                                            <i class="fas fa-sign-out-alt me-3"></i>
+                                            Sign Out
+                                        </button>
+                                        @Html.AntiForgeryToken()
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    }
+                    else
+                    {
+                        <a class="nav-link glass me-2" href="@Url.Action("Login", "Account")">
+                            <i class="fas fa-sign-in-alt me-2"></i>
+                            Sign In
+                        </a>
+                        <a class="nav-link glass" href="@Url.Action("Register", "Account")">
+                            <i class="fas fa-user-plus me-2"></i>
+                            Register
+                        </a>
+                    }
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <div class="content-wrapper">
+            @RenderBody()
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer text-muted py-3" id="footer">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-copyright me-2"></i>
+                        <span>2025 CallCenter Pro - All rights reserved</span>
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <a href="@Url.Action("Privacy", "Home")" class="text-decoration-none me-3">
+                        <i class="fas fa-shield-alt me-1"></i>Privacy
+                    </a>
+                    <a href="#" class="text-decoration-none">
+                        <i class="fas fa-life-ring me-1"></i>Support
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    
+    <script>
+        // Manageable Sidebar Menu Configuration
+        const sidebarMenus = [
+            {
+                name: 'Dashboard',
+                icon: 'fas fa-tachometer-alt',
+                route: '@Url.Action("Index", "Home")',
+                roles: ['*'], // * means all users
+                children: null
+            },
+            {
+                name: 'Call Center',
+                icon: 'fas fa-headset',
+                route: null,
+                roles: ['User', 'Admin'],
+                children: [
+                    { name: 'Active Calls', icon: 'fas fa-phone', route: '#', roles: ['User', 'Admin'] },
+                    { name: 'Call History', icon: 'fas fa-history', route: '#', roles: ['User', 'Admin'] },
+                    { name: 'Call Analytics', icon: 'fas fa-chart-line', route: '#', roles: ['Admin'] },
+                    { name: 'Agent Management', icon: 'fas fa-users-cog', route: '#', roles: ['Admin'] }
+                ]
+            },
+            {
+                name: 'Billing',
+                icon: 'fas fa-file-invoice-dollar',
+                route: null,
+                roles: ['User', 'Admin'],
+                children: [
+                    { name: 'Invoices', icon: 'fas fa-file-invoice', route: '#', roles: ['User', 'Admin'] },
+                    { name: 'Payment History', icon: 'fas fa-credit-card', route: '#', roles: ['User', 'Admin'] },
+                    { name: 'Billing Reports', icon: 'fas fa-chart-bar', route: '#', roles: ['Admin'] },
+                    { name: 'Rate Management', icon: 'fas fa-tags', route: '#', roles: ['Admin'] }
+                ]
+            },
+            {
+                name: 'Reports',
+                icon: 'fas fa-chart-pie',
+                route: null,
+                roles: ['Admin'],
+                children: [
+                    { name: 'Call Reports', icon: 'fas fa-phone-alt', route: '#', roles: ['Admin'] },
+                    { name: 'Revenue Reports', icon: 'fas fa-dollar-sign', route: '#', roles: ['Admin'] },
+                    { name: 'Performance', icon: 'fas fa-trophy', route: '#', roles: ['Admin'] },
+                    { name: 'Export Data', icon: 'fas fa-download', route: '#', roles: ['Admin'] }
+                ]
+            },
+            {
+                name: 'Account',
+                icon: 'fas fa-user-circle',
+                route: null,
+                roles: ['User', 'Admin'],
+                children: [
+                    { name: 'Profile', icon: 'fas fa-user', route: '@Url.Action("Profile", "Account")', roles: ['User', 'Admin'] },
+                    { name: 'Security', icon: 'fas fa-shield-alt', route: '#', roles: ['User', 'Admin'] },
+                    { name: 'Preferences', icon: 'fas fa-cog', route: '#', roles: ['User', 'Admin'] }
+                ]
+            },
+            {
+                name: 'Administration',
+                icon: 'fas fa-tools',
+                route: null,
+                roles: ['Admin'],
+                children: [
+                    { name: 'User Management', icon: 'fas fa-users', route: '#', roles: ['Admin'] },
+                    { name: 'System Settings', icon: 'fas fa-server', route: '#', roles: ['Admin'] },
+                    { name: 'Audit Logs', icon: 'fas fa-clipboard-list', route: '#', roles: ['Admin'] },
+                    { name: 'Backup & Restore', icon: 'fas fa-database', route: '#', roles: ['Admin'] }
+                ]
+            }
+        ];
+
+        // Add public menus for non-authenticated users
+        const publicMenus = [
+            {
+                name: 'Home',
+                icon: 'fas fa-home',
+                route: '@Url.Action("Index", "Home")',
+                roles: ['*'],
+                children: null
+            },
+            {
+                name: 'Sign In',
+                icon: 'fas fa-sign-in-alt',
+                route: '@Url.Action("Login", "Account")',
+                roles: ['Guest'],
+                children: null
+            },
+            {
+                name: 'Register',
+                icon: 'fas fa-user-plus',
+                route: '@Url.Action("Register", "Account")',
+                roles: ['Guest'],
+                children: null
+            },
+            {
+                name: 'Privacy',
+                icon: 'fas fa-shield-alt',
+                route: '@Url.Action("Privacy", "Home")',
+                roles: ['*'],
+                children: null
+            }
+        ];
+
+        // Check if user is authenticated
+        const isAuthenticated = @Json.Serialize(User.Identity?.IsAuthenticated == true);
+        const userRole = 'Admin'; // You can get this from User.Claims or however you store roles
+
+        // Function to check if user has access to menu item
+        function hasAccess(menuRoles) {
+            if (menuRoles.includes('*')) return true;
+            if (!isAuthenticated && menuRoles.includes('Guest')) return true;
+            if (isAuthenticated && menuRoles.includes(userRole)) return true;
+            return false;
+        }
+
+        // Function to get current path
+        function getCurrentPath() {
+            return window.location.pathname.toLowerCase();
+        }
+
+        // Function to render sidebar menu
+        function renderSidebarMenu() {
+            const sidebarNav = document.getElementById('sidebarNav');
+            const menusToShow = isAuthenticated ? sidebarMenus : publicMenus;
+            const currentPath = getCurrentPath();
+            
+            let html = '';
+            let sectionAdded = false;
+            
+            menusToShow.forEach(menu => {
+                if (hasAccess(menu.roles)) {
+                    if (!sectionAdded && isAuthenticated) {
+                        html += '<li class="nav-section-title">Main Navigation</li>';
+                        sectionAdded = true;
+                    }
+                    
+                    const isActive = menu.route && currentPath === menu.route.toLowerCase();
+                    const hasChildren = menu.children && menu.children.length > 0;
+                    
+                    html += `
+                        <li class="nav-item">
+                            <a href="${menu.route || '#'}" class="nav-link ${isActive ? 'active' : ''} ${hasChildren ? 'collapsed' : ''}" 
+                               ${hasChildren ? `data-bs-toggle="collapse" data-bs-target="#menu-${menu.name.replace(/\s+/g, '')}"` : ''}>
+                                <i class="${menu.icon} nav-icon"></i>
+                                <span class="nav-text">${menu.name}</span>
+                                ${hasChildren ? '<i class="fas fa-chevron-down nav-arrow"></i>' : ''}
+                            </a>
+                    `;
+                    
+                    if (hasChildren) {
+                        html += `<div class="nav-children collapse" id="menu-${menu.name.replace(/\s+/g, '')}">`;
+                        menu.children.forEach(child => {
+                            if (hasAccess(child.roles)) {
+                                const childActive = child.route && currentPath === child.route.toLowerCase();
+                                html += `
+                                    <a href="${child.route}" class="nav-child ${childActive ? 'active' : ''}">
+                                        <i class="${child.icon} me-2"></i>
+                                        ${child.name}
+                                    </a>
+                                `;
+                            }
+                        });
+                        html += '</div>';
+                    }
+                    
+                    html += '</li>';
+                }
+            });
+            
+            sidebarNav.innerHTML = html;
+        }
+
+        // Sidebar functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            renderSidebarMenu();
+            
+            // Sidebar toggle
+            document.getElementById('sidebarToggle').addEventListener('click', function() {
+                const sidebar = document.getElementById('sidebar');
+                const mainContent = document.getElementById('mainContent');
+                const footer = document.getElementById('footer');
+                
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+                footer.classList.toggle('expanded');
+            });
+
+            // Handle submenu toggles
+            document.addEventListener('click', function(e) {
+                const menuLink = e.target.closest('.nav-link[data-bs-toggle="collapse"]');
+                if (menuLink) {
+                    e.preventDefault();
+                    const target = document.querySelector(menuLink.getAttribute('data-bs-target'));
+                    if (target) {
+                        target.classList.toggle('show');
+                        menuLink.classList.toggle('collapsed');
+                    }
+                }
+            });
+
+            // Mobile responsiveness
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebarToggle').addEventListener('click', function() {
+                    const sidebar = document.getElementById('sidebar');
+                    sidebar.classList.toggle('show');
+                });
+
+                // Close sidebar when clicking outside on mobile
+                document.addEventListener('click', function(event) {
+                    const sidebar = document.getElementById('sidebar');
+                    const sidebarToggle = document.getElementById('sidebarToggle');
+                    
+                    if (!sidebar.contains(event.target) && !sidebarToggle.contains(event.target)) {
+                        sidebar.classList.remove('show');
+                    }
+                });
+            }
+        });
+    </script>
+    
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
