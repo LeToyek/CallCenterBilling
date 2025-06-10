@@ -1,0 +1,669 @@
+@page "/Agent/Activity"
+@using MudBlazor
+@using Microsoft.AspNetCore.SignalR.Client
+@using CallCenterBilling.Application.DTOs
+@using CallCenterBilling.Application.Interfaces
+@using CallCenterBilling.Domain.ValueObjects
+@using CallCenterBilling.Domain.Entities
+@implements IAsyncDisposable
+
+@inject IAgentStatusService AgentStatusService
+@inject ICallService CallService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject IDialogService DialogService // <-- 1. INJECT THE SERVICE
+
+<MudContainer Class="mt-4 px-4" MaxWidth="MaxWidth.False">
+    <!-- Connection Status -->
+    <MudAlert Severity="@GetConnectionSeverity()" Class="mb-4">
+        <div class="d-flex align-center">
+            <MudIcon Icon="@GetConnectionIcon()" Class="mr-2" />
+            <MudText>@connectionStatus</MudText>
+            @if (!IsConnected)
+            {
+                <MudSpacer />
+                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Inherit" OnClick="ConnectAsync">
+                    Reconnect
+                </MudButton>
+            }
+        </div>
+    </MudAlert>
+
+    <!-- Dashboard Metrics -->
+    <MudGrid Spacing="3" Class="mb-4">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Class="pa-4">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Group" Color="Color.Primary" Size="Size.Large" Class="mr-3" />
+                    <div>
+                        <MudText Typo="Typo.h4">@dashboard?.OnlineAgents</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Online Agents</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Class="pa-4">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Phone" Color="Color.Success" Size="Size.Large" Class="mr-3" />
+                    <div>
+                        <MudText Typo="Typo.h4">@dashboard?.AgentsOnCall</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Agents on Call</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Class="pa-4">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.CallMade" Color="Color.Info" Size="Size.Large" Class="mr-3" />
+                    <div>
+                        <MudText Typo="Typo.h4">@dashboard?.ActiveCalls?.Count()</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Active Calls</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Class="pa-4">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Color="Color.Warning" Size="Size.Large"
+                        Class="mr-3" />
+                    <div>
+                        <MudText Typo="Typo.h4">$@dashboard?.Metrics?.TotalRevenue.ToString("N0")</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Total Revenue</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Spacing="3">
+        <!-- Agents Panel -->
+        <MudItem xs="12" lg="8">
+            <MudPaper Elevation="2" Class="pa-4" Style="height: 600px;">
+                <div class="d-flex justify-space-between align-center mb-4">
+                    <MudText Typo="Typo.h6">Agent Status</MudText>
+                    <div>
+                        <MudButton StartIcon="@Icons.Material.Filled.Refresh" Variant="Variant.Text" Size="Size.Small"
+                            OnClick="RefreshDashboard" Disabled="@(!IsConnected)">
+                            Refresh
+                        </MudButton>
+                        <MudButton StartIcon="@Icons.Material.Filled.PersonAdd" Variant="Variant.Filled"
+                            Color="Color.Primary" Size="Size.Small" OnClick="ShowSimulateAgentDialog">
+                            Simulate Agent
+                        </MudButton>
+                    </div>
+                </div>
+
+                <MudDataGrid T="AgentCallStatusDto"
+                    Items="@(dashboard?.Agents ?? Enumerable.Empty<AgentCallStatusDto>())" Dense="true" Hover="true"
+                    FixedHeader="true" Height="500px">
+                    <Columns>
+                        <PropertyColumn Property="x => x.Name" Title="Agent">
+                            <CellTemplate>
+                                <div class="d-flex align-center">
+                                    <MudAvatar Size="Size.Small" Class="mr-2">
+                                        @context.Item.Name.Substring(0, 1).ToUpper()
+                                    </MudAvatar>
+                                    <div>
+                                        <MudText Typo="Typo.body2">@context.Item.Name</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">ID:
+                                            @context.Item.AgentId</MudText>
+                                    </div>
+                                </div>
+                            </CellTemplate>
+                        </PropertyColumn>
+
+                        <PropertyColumn Property="x => x.Status" Title="Status">
+                            <CellTemplate>
+                                <MudChip Size="Size.Small" Color="@GetStatusColor(context.Item.Status)"
+                                    Text="@context.Item.Status.ToString()" />
+                            </CellTemplate>
+                        </PropertyColumn>
+
+                        <PropertyColumn Property="x => x.IsOnCall" Title="Call Status">
+                            <CellTemplate>
+                                @if (context.Item.IsOnCall && context.Item.CurrentCall != null)
+                                {
+                                    <div>
+                                        <MudIcon Icon="@Icons.Material.Filled.Phone" Color="Color.Success" Size="Size.Small"
+                                            Class="mr-1" />
+                                        <MudText Typo="Typo.body2" Class="d-inline">
+                                            @context.Item.CurrentCall.CustomerPhoneNumber
+                                        </MudText>
+                                        <br />
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @FormatDuration(context.Item.CurrentCallDuration)
+                                        </MudText>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">Available</MudText>
+                                }
+                            </CellTemplate>
+                        </PropertyColumn>
+
+                        <PropertyColumn Property="x => x.LastActiveAt" Title="Last Active">
+                            <CellTemplate>
+                                <MudText Typo="Typo.body2">@context.Item.LastActiveAt.ToString("HH:mm:ss")</MudText>
+                            </CellTemplate>
+                        </PropertyColumn>
+
+                        <TemplateColumn Title="Actions" Sortable="false">
+                            <CellTemplate>
+                                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                                    <MudMenuItem
+                                        OnClick="@(() => ChangeAgentStatus(context.Item.AgentId, AgentStatus.Active))"
+                                        Disabled="@(context.Item.Status == AgentStatus.Active)">
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small"
+                                                Class="mr-2" />
+                                            Set Active
+                                        </div>
+                                    </MudMenuItem>
+                                    <MudMenuItem
+                                        OnClick="@(() => ChangeAgentStatus(context.Item.AgentId, AgentStatus.OnBreak))"
+                                        Disabled="@(context.Item.Status == AgentStatus.OnBreak)">
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Pause" Size="Size.Small"
+                                                Class="mr-2" />
+                                            Set Break
+                                        </div>
+                                    </MudMenuItem>
+                                    <MudMenuItem
+                                        OnClick="@(() => ChangeAgentStatus(context.Item.AgentId, AgentStatus.Offline))"
+                                        Disabled="@(context.Item.Status == AgentStatus.Offline)">
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Stop" Size="Size.Small"
+                                                Class="mr-2" />
+                                            Set Offline
+                                        </div>
+                                    </MudMenuItem>
+                                    <MudDivider />
+                                    <MudMenuItem OnClick="@(() => StartCallForAgent(context.Item.AgentId))"
+                                        Disabled="@(context.Item.IsOnCall || context.Item.Status != AgentStatus.Active)">
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Call" Size="Size.Small"
+                                                Class="mr-2" />
+                                            Start Call
+                                        </div>
+                                    </MudMenuItem>
+                                    @if (context.Item.IsOnCall && context.Item.CurrentCall != null)
+                                    {
+                                        <MudMenuItem OnClick="@(() => EndCall(context.Item.CurrentCall.CallId))">
+                                            <div class="d-flex align-center">
+                                                <MudIcon Icon="@Icons.Material.Filled.CallEnd" Size="Size.Small"
+                                                    Class="mr-2" />
+                                                End Call
+                                            </div>
+                                        </MudMenuItem>
+                                    }
+                                </MudMenu>
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                </MudDataGrid>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Active Calls Panel -->
+        <MudItem xs="12" lg="4">
+            <MudPaper Elevation="2" Class="pa-4" Style="height: 600px;">
+                <MudText Typo="Typo.h6" Class="mb-4">Active Calls</MudText>
+
+                @if (dashboard?.ActiveCalls?.Any() == true)
+                {
+                    <MudList T="string" Dense="true" Class="overflow-auto" Style="max-height: 520px;">
+                        @foreach (var call in dashboard.ActiveCalls.OrderByDescending(c => c.StartTime))
+                        {
+                            <MudListItem>
+                                <div class="d-flex flex-column w-100">
+                                    <div class="d-flex justify-space-between align-center">
+                                        <MudText Typo="Typo.body2">@call.AgentName</MudText>
+                                        <MudChip Size="Size.Small" Color="Color.Success" Text="@call.Status.ToString()" />
+                                    </div>
+                                    <MudText Typo="Typo.body2" Color="Color.Primary">@call.CustomerPhoneNumber</MudText>
+                                    @if (!string.IsNullOrEmpty(call.CustomerName))
+                                    {
+                                        <MudText Typo="Typo.caption">@call.CustomerName</MudText>
+                                    }
+                                    <div class="d-flex justify-space-between align-center mt-1">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            Started: @call.StartTime.ToString("HH:mm:ss")
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @FormatDuration(call.Duration)
+                                        </MudText>
+                                    </div>
+                                </div>
+                            </MudListItem>
+                            <MudDivider />
+                        }
+                    </MudList>
+                }
+                else
+                {
+                    <div class="d-flex flex-column align-center justify-center" style="height: 300px;">
+                        <MudIcon Icon="@Icons.Material.Filled.PhoneDisabled" Size="Size.Large" Color="Color.Secondary" />
+                        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-2">No active calls</MudText>
+                    </div>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+<!-- Simulate Agent Dialog -->
+@* <MudDialog @bind-IsVisible="showSimulateDialog"
+    Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Simulate Agent Action</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="simulateForm">
+            <MudSelect @bind-Value="selectedAgentId" Label="Select Agent" Required="true"
+                RequiredError="Please select an agent">
+                @if (dashboard?.Agents != null)
+                {
+                    @foreach (var agent in dashboard.Agents)
+                    {
+                        <MudSelectItem Value="@agent.AgentId">@agent.Name</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+
+            <MudTextField @bind-Value="customerPhone" Label="Customer Phone" Required="true"
+                RequiredError="Phone number is required" Class="mt-3" />
+
+            <MudTextField @bind-Value="customerName" Label="Customer Name (Optional)" Class="mt-3" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => showSimulateDialog = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SimulateCall">Start Call</MudButton>
+    </DialogActions>
+</MudDialog> *@
+
+@code {
+    private HubConnection? hubConnection;
+    private CallDashboardDto? dashboard;
+    private string connectionStatus = "Connecting...";
+    private bool showSimulateDialog = false;
+    private MudForm? simulateForm;
+    private int selectedAgentId;
+    private string customerPhone = "";
+    private string customerName = "";
+    private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+
+    private bool IsConnected => hubConnection?.State == HubConnectionState.Connected;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ConnectAsync();
+        await LoadInitialData();
+    }
+
+    private async Task ConnectAsync()
+    {
+        try
+        {
+            hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/callcenterhub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+            // Register event handlers
+            hubConnection.On<AgentCallStatusDto>("AgentStatusChanged", OnAgentStatusChanged);
+            hubConnection.On<CallStatusDto>("CallStatusChanged", OnCallStatusChanged);
+            hubConnection.On<CallDashboardDto>("DashboardUpdated", OnDashboardUpdated);
+            hubConnection.On<int>("AgentConnected", OnAgentConnected);
+            hubConnection.On<int>("AgentDisconnected", OnAgentDisconnected);
+
+            hubConnection.Reconnecting += (error) =>
+            {
+                InvokeAsync(() =>
+    {
+                connectionStatus = "Reconnecting...";
+                StateHasChanged();
+            });
+                return Task.CompletedTask;
+            };
+
+            hubConnection.Reconnected += (connectionId) =>
+            {
+                InvokeAsync(() =>
+    {
+                connectionStatus = "Connected";
+                StateHasChanged();
+            });
+                return Task.CompletedTask;
+            };
+
+            hubConnection.Closed += (error) =>
+            {
+                InvokeAsync(() =>
+    {
+                connectionStatus = error?.Message ?? "Disconnected";
+                StateHasChanged();
+            });
+                return Task.CompletedTask;
+            };
+
+            await hubConnection.StartAsync();
+
+            // Join dashboard group
+            await hubConnection.SendAsync("JoinGroup", "Dashboard");
+
+            connectionStatus = "Connected";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            connectionStatus = $"Connection failed: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadInitialData()
+    {
+        try
+        {
+            dashboard = await AgentStatusService.GetDashboardAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading dashboard: {ex.Message}", Severity.Error);
+        }
+    }
+
+    // SignalR Event Handlers
+    private async Task OnAgentStatusChanged(AgentCallStatusDto agentStatus)
+    {
+        await InvokeAsync(() =>
+        {
+            if (dashboard?.Agents != null)
+            {
+                var existingAgent = dashboard.Agents.FirstOrDefault(a => a.AgentId == agentStatus.AgentId);
+                if (existingAgent != null)
+                {
+                    // Update the existing agent in the collection
+                    var agents = dashboard.Agents.ToList();
+                    var index = agents.FindIndex(a => a.AgentId == agentStatus.AgentId);
+                    if (index >= 0)
+                    {
+                        agents[index] = agentStatus;
+                        dashboard = dashboard with { Agents = agents };
+                    }
+                }
+            }
+
+            Snackbar.Add($"Agent {agentStatus.Name} status changed to {agentStatus.Status}", Severity.Info);
+            StateHasChanged();
+        });
+    }
+
+    private async Task OnCallStatusChanged(CallStatusDto callStatus)
+    {
+        await InvokeAsync(() =>
+        {
+            if (dashboard != null)
+            {
+                var activeCalls = dashboard.ActiveCalls.ToList();
+
+                if (callStatus.Status == CallStatus.InProgress)
+                {
+                    // Add or update active call
+                    var existingIndex = activeCalls.FindIndex(c => c.CallId == callStatus.CallId);
+                    if (existingIndex >= 0)
+                        activeCalls[existingIndex] = callStatus;
+                    else
+                        activeCalls.Add(callStatus);
+                }
+                else
+                {
+                    // Remove completed/failed calls
+                    activeCalls.RemoveAll(c => c.CallId == callStatus.CallId);
+                }
+
+                dashboard = dashboard with { ActiveCalls = activeCalls };
+            }
+
+            var statusText = callStatus.Status switch
+            {
+                CallStatus.InProgress => "started",
+                CallStatus.Completed => "completed",
+                CallStatus.Failed => "failed",
+                _ => callStatus.Status.ToString().ToLower()
+            };
+
+            Snackbar.Add($"Call {statusText}: {callStatus.AgentName} - {callStatus.CustomerPhoneNumber}", Severity.Info);
+            StateHasChanged();
+        });
+    }
+
+    private async Task OnDashboardUpdated(CallDashboardDto updatedDashboard)
+    {
+        await InvokeAsync(() =>
+        {
+            dashboard = updatedDashboard;
+            StateHasChanged();
+        });
+    }
+
+    private async Task OnAgentConnected(int agentId)
+    {
+        await InvokeAsync(() =>
+        {
+            var agent = dashboard?.Agents?.FirstOrDefault(a => a.AgentId == agentId);
+            var agentName = agent?.Name ?? $"Agent {agentId}";
+            Snackbar.Add($"{agentName} connected", Severity.Success);
+        });
+    }
+
+    private async Task OnAgentDisconnected(int agentId)
+    {
+        await InvokeAsync(() =>
+        {
+            var agent = dashboard?.Agents?.FirstOrDefault(a => a.AgentId == agentId);
+            var agentName = agent?.Name ?? $"Agent {agentId}";
+            Snackbar.Add($"{agentName} disconnected", Severity.Warning);
+        });
+    }
+
+    // UI Event Handlers
+    private async Task RefreshDashboard()
+    {
+        try
+        {
+            await LoadInitialData();
+            Snackbar.Add("Dashboard refreshed", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error refreshing dashboard: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ChangeAgentStatus(int agentId, AgentStatus status)
+    {
+        if (!IsConnected) return;
+
+        try
+        {
+            await hubConnection!.SendAsync("UpdateAgentStatus", agentId, status);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating agent status: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ShowSimulateAgentDialog()
+{
+    // The call is now much simpler since the dialog handles its own data.
+    var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+    var dialog = await DialogService.ShowAsync<SimulateAgentDialog>("Simulate Agent Action", options);
+    var result = await dialog.Result;
+
+    if (!result.Canceled)
+    {
+        var callParams = (SimulateAgentDialog.SimulatedCallParameters)result.Data;
+        await ExecuteStartCall(callParams.AgentId, callParams.CustomerPhone, callParams.CustomerName);
+    }
+}
+
+    private async Task ExecuteStartCall(int agentId, string customerPhone, string? customerName)
+    {
+        try
+        {
+            var callId = await CallService.StartCallAsync(agentId, customerPhone,
+                string.IsNullOrWhiteSpace(customerName) ? null : customerName);
+
+            Snackbar.Add($"Call started with ID {callId}", Severity.Success);
+
+            // Simulate ending the call after 30 seconds (with the CancellationToken fix)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(30000, _cts.Token);
+                    var revenue = Random.Shared.Next(50, 500);
+                    await CallService.EndCallAsync(callId, revenue, "Simulated call completed");
+                }
+                catch (OperationCanceledException) { /* Expected on dispose */ }
+                catch (Exception ex)
+                {
+                    if (!_cts.Token.IsCancellationRequested)
+                    {
+                        await InvokeAsync(() => Snackbar.Add($"Error ending simulated call: {ex.Message}", Severity.Error));
+                    }
+                }
+            }, _cts.Token);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error starting call: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task StartCallForAgent(int agentId)
+    {
+        selectedAgentId = agentId;
+        customerPhone = $"+1{Random.Shared.Next(1000000000, int.MaxValue)}";
+        customerName = $"Customer {Random.Shared.Next(1000, 9999)}";
+        await SimulateCall();
+    }
+
+    private async Task SimulateCall()
+    {
+        if (simulateForm != null)
+        {
+            await simulateForm.Validate();
+            if (!simulateForm.IsValid) return;
+        }
+
+        if (selectedAgentId == 0 || string.IsNullOrWhiteSpace(customerPhone))
+        {
+            Snackbar.Add("Please fill in required fields", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var callId = await CallService.StartCallAsync(selectedAgentId, customerPhone,
+            string.IsNullOrWhiteSpace(customerName) ? null : customerName);
+
+            showSimulateDialog = false;
+            Snackbar.Add($"Call started with ID {callId}", Severity.Success);
+
+            // Simulate ending the call after 30 seconds
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    // Pass the token to Task.Delay
+                    await Task.Delay(30000, _cts.Token);
+                    var revenue = Random.Shared.Next(50, 500);
+                    await CallService.EndCallAsync(callId, revenue, "Simulated call completed");
+                }
+                catch (Exception ex)
+                {
+                    if (!_cts.Token.IsCancellationRequested)
+                    {
+                        await InvokeAsync(() => Snackbar.Add($"Error ending simulated call: {ex.Message}", Severity.Error));
+                    }
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error starting call: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task EndCall(int callId)
+    {
+        try
+        {
+            var revenue = Random.Shared.Next(50, 500);
+            await CallService.EndCallAsync(callId, revenue, "Call ended manually");
+            Snackbar.Add("Call ended successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error ending call: {ex.Message}", Severity.Error);
+        }
+    }
+
+    // Helper Methods
+    private Color GetStatusColor(AgentStatus status)
+    {
+        return status switch
+        {
+            AgentStatus.Active => Color.Success,
+            AgentStatus.OnBreak => Color.Warning,
+            AgentStatus.Offline => Color.Default,
+            _ => Color.Default
+        };
+    }
+
+    private Severity GetConnectionSeverity()
+    {
+        return IsConnected ? Severity.Success : Severity.Warning;
+    }
+
+    private string GetConnectionIcon()
+    {
+        return IsConnected ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Warning;
+    }
+
+    private string FormatDuration(TimeSpan? duration)
+    {
+        if (!duration.HasValue) return "00:00";
+
+        var d = duration.Value;
+        if (d.TotalHours >= 1)
+            return $"{(int)d.TotalHours:D2}:{d.Minutes:D2}:{d.Seconds:D2}";
+        else
+            return $"{d.Minutes:D2}:{d.Seconds:D2}";
+    }
+
+    // Updated DisposeAsync method
+    public async ValueTask DisposeAsync()
+    {
+        _cts.Cancel(); // Signal cancellation to any running tasks
+        _cts.Dispose();
+
+        if (hubConnection != null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}

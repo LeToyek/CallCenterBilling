@@ -8,6 +8,8 @@ using CallCenterBilling.Domain.Entities;
 using CallCenterBilling.Domain.Interfaces;
 using CallCenterBilling.Infrastructure.Data;
 using CallCenterBilling.Infrastructure.Repositories;
+using CallCenterBilling.Infrastructure.BackgroundServices;
+using CallCenterBilling.Infrastructure.Services;
 
 namespace CallCenterBilling.Infrastructure;
 
@@ -58,10 +60,21 @@ public static class DependencyInjection
         // Repositories
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IAgentRepository, AgentRepository>();
+        services.AddScoped<ICallRepository, CallRepository>();
+        services.AddScoped<IAgentSessionRepository, AgentSessionRepository>();
+
 
         // Services
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IAgentService, AgentService>();
+        services.AddScoped<ICallService, CallService>();
+        services.AddScoped<IAgentStatusService, AgentStatusService>();
+        services.AddScoped<ISessionService, SessionService>();
+        services.AddScoped<IRealTimeNotificationService, RealTimeNotificationService>();
+
+        // Background Services
+        services.AddHostedService<SessionCleanupService>();
+        services.AddHostedService<CallCenterSimulationService>();
 
         return services;
     }

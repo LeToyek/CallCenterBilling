@@ -1,0 +1,128 @@
+@using MudBlazor
+@using CallCenterBilling.Application.DTOs
+@using CallCenterBilling.Domain.ValueObjects
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Psychology" Class="mr-3" />
+            Simulate Agent Activity
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudContainer Style="max-height: 400px; overflow-y: auto;">
+            <MudForm @ref="form" @bind-IsValid="@isValid">
+                <MudGrid>
+                    <MudItem xs="12">
+                        <MudSelect @bind-Value="simulationParams.AgentId" 
+                                   Label="Select Agent" 
+                                   Required="true"
+                                   RequiredError="Please select an agent">
+                            @if (Agents != null)
+                            {
+                                @foreach (var agent in Agents)
+                                {
+                                    <MudSelectItem Value="@agent.AgentId">@agent.Name (ID: @agent.AgentId)</MudSelectItem>
+                                }
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="6">
+                        <MudTextField @bind-Value="simulationParams.CustomerPhone" 
+                                      Label="Customer Phone" 
+                                      Required="true"
+                                      RequiredError="Phone number is required"
+                                      Placeholder="+1234567890" />
+                    </MudItem>
+
+                    <MudItem xs="6">
+                        <MudTextField @bind-Value="simulationParams.CustomerName" 
+                                      Label="Customer Name" 
+                                      Placeholder="John Doe" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudDivider />
+                        <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2">Simulation Options</MudText>
+                    </MudItem>
+
+                    <MudItem xs="6">
+                        <MudSlider @bind-Value="simulationParams.CallDurationMinutes"
+                                   Min="1" Max="30" Step="1"
+                                   Color="Color.Primary">
+                            Call Duration: @simulationParams.CallDurationMinutes min
+                        </MudSlider>
+                    </MudItem>
+
+                    <MudItem xs="6">
+                        <MudSlider @bind-Value="simulationParams.RevenueAmount"
+                                   Min="10" Max="1000" Step="10"
+                                   Color="Color.Success">
+                            Revenue: $@simulationParams.RevenueAmount
+                        </MudSlider>
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudCheckBox T="string" @bind-Checked="simulationParams.AutoEndCall"
+                                     Label="Auto-end call after duration"
+                                     Color="Color.Primary" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   OnClick="StartSimulation"
+                   Disabled="@(!isValid)"
+                   StartIcon="@Icons.Material.Filled.PlayArrow">
+            Start Simulation
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
+    [Parameter] public IEnumerable<AgentCallStatusDto>? Agents { get; set; }
+
+    private MudForm form;
+    private bool isValid;
+    private SimulatedCallParameters simulationParams = new();
+
+    protected override void OnInitialized()
+    {
+        // Generate random defaults
+        var random = new Random();
+        simulationParams.CustomerPhone = $"+1{random.Next(200, 999)}{random.Next(1000000, 9999999)}";
+        simulationParams.CustomerName = GenerateRandomCustomerName();
+        simulationParams.CallDurationMinutes = random.Next(2, 10);
+        simulationParams.RevenueAmount = random.Next(50, 300);
+        simulationParams.AutoEndCall = true;
+        simulationParams.AgentId = Agents?.FirstOrDefault()?.AgentId ?? 1;
+    }
+
+    private string GenerateRandomCustomerName()
+    {
+        string[] firstNames = { "John", "Jane", "Mike", "Sarah", "David", "Emma", "Chris", "Lisa", "Tom", "Anna" };
+        string[] lastNames = { "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez" };
+        var random = new Random();
+        return $"{firstNames[random.Next(firstNames.Length)]} {lastNames[random.Next(lastNames.Length)]}";
+    }
+
+    void Cancel() => MudDialog.Cancel();
+    
+    void StartSimulation() => MudDialog.Close(simulationParams);
+
+    public class SimulatedCallParameters
+    {
+        public int AgentId { get; set; }
+        public string CustomerPhone { get; set; } = "";
+        public string CustomerName { get; set; } = "";
+        public int CallDurationMinutes { get; set; } = 5;
+        public int RevenueAmount { get; set; } = 100;
+        public bool AutoEndCall { get; set; } = true;
+    }
+}

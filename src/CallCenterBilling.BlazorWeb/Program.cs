@@ -22,6 +22,13 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddAutoMapper(typeof(AgentMappingProfile));
 
 builder.Services.AddControllers();
+builder.Services.AddSignalR(options =>
+    {
+        options.EnableDetailedErrors = true;
+        options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+        options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+    }
+);
 
 // Add authorization policies (optional - customize as needed)
 builder.Services.AddAuthorizationBuilder()
@@ -64,6 +71,8 @@ app.MapPost("/Account/Logout", async (SignInManager<ApplicationUser> signInManag
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
+app.MapHub<CallCenterHub>("/callcenterhub"); // <--- THIS IS THE FIX
+
 app.MapControllers();
 
 // Ensure database is created and seeded (optional)
@@ -103,7 +112,7 @@ static async Task SeedDataAsync(IServiceProvider serviceProvider)
     // Create default admin user
     var adminEmail = "admin@callcenter.com";
     var adminUser = await userManager.FindByEmailAsync(adminEmail);
-    
+
     if (adminUser == null)
     {
         adminUser = new ApplicationUser
@@ -115,7 +124,7 @@ static async Task SeedDataAsync(IServiceProvider serviceProvider)
             LastName = "Administrator",
             IsActive = true
         };
-        
+
         var result = await userManager.CreateAsync(adminUser, "Admin@123");
         if (result.Succeeded)
         {

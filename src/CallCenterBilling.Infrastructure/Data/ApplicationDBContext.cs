@@ -12,6 +12,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         
     }
     public DbSet<Agent> Agents { get; set; }
+    public DbSet<Call> Calls { get; set; }
+    public DbSet<AgentSession> AgentSessions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -49,5 +51,41 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             new Agent { Id = 5, Name = "Emma Wilson", Email = "emma.wilson@company.com", Status = AgentStatus.Offline, TotalCalls = 68, TotalRevenue = 1650, Rating = 4, CreatedAt = DateTime.UtcNow.AddDays(-10) },
             new Agent { Id = 6, Name = "Alex Brown", Email = "alex.brown@company.com", Status = AgentStatus.Active, TotalCalls = 65, TotalRevenue = 1580, Rating = 4, CreatedAt = DateTime.UtcNow.AddDays(-5) }
         );
+
+        // Call configuration
+        builder.Entity<Call>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CustomerPhoneNumber).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.CustomerName).HasMaxLength(100);
+            entity.Property(e => e.Revenue).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Notes).HasMaxLength(500);
+
+            entity.HasOne(e => e.Agent)
+                  .WithMany()
+                  .HasForeignKey(e => e.AgentId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => e.AgentId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.StartTime);
+        });
+
+        // AgentSession configuration
+        builder.Entity<AgentSession>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ConnectionId).HasMaxLength(100).IsRequired();
+
+            entity.HasOne(e => e.Agent)
+                  .WithMany()
+                  .HasForeignKey(e => e.AgentId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => e.AgentId);
+            entity.HasIndex(e => e.ConnectionId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.LastHeartbeat);
+        });
     }
 }
