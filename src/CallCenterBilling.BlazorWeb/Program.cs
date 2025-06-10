@@ -3,6 +3,7 @@ using CallCenterBilling.Application.Mappings;
 using CallCenterBilling.Infrastructure;
 using CallCenterBilling.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
+using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,11 +19,16 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 // Add AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
+builder.Services.AddAutoMapper(typeof(AgentMappingProfile));
+
+builder.Services.AddControllers();
 
 // Add authorization policies (optional - customize as needed)
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("RequireAdminRole", policy => policy.RequireRole("Admin"))
     .AddPolicy("RequireUserRole", policy => policy.RequireRole("User", "Admin"));
+
+builder.Services.AddMudServices();
 
 var app = builder.Build();
 

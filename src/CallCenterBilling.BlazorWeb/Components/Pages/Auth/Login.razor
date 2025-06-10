@@ -1,0 +1,195 @@
+@* Components/Account/Login.razor *@
+@page "/Account/Login"
+@layout AuthLayout
+@using Microsoft.AspNetCore.Identity
+@using CallCenterBilling.Domain.Entities
+@using System.ComponentModel.DataAnnotations
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager Navigation
+@inject ILogger<Login> Logger
+
+<PageTitle>Log in</PageTitle>
+
+<div class="form-container">
+    <h3 class="form-title">Welcome Back!</h3>
+    <p class="form-subtitle">Log in to continue to your account.</p>
+
+    <EditForm Model="Input" OnValidSubmit="LoginUser" FormName="login">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" role="alert" />
+
+        <div class="input-wrapper">
+            <i class="fa-regular fa-envelope input-icon"></i>
+            <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" placeholder="Your Email" />
+            <ValidationMessage For="() => Input.Email" class="text-danger" />
+        </div>
+
+        <div class="input-wrapper">
+            <i class="fa-solid fa-lock input-icon"></i>
+            <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="current-password" placeholder="Password" />
+            <ValidationMessage For="() => Input.Password" class="text-danger" />
+        </div>
+
+        <div class="form-options">
+            <div class="form-check">
+                <InputCheckbox @bind-Value="Input.RememberMe" id="rememberMe" class="form-check-input" />
+                <label class="form-check-label" for="rememberMe">Remember me</label>
+            </div>
+            <a href="/Account/ForgotPassword" class="forgot-password">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-submit">Log In</button>
+    </EditForm>
+
+    <div class="alternative-action">
+        <span>Don't have an account? <a href="/Account/Register">Sign Up</a></span>
+    </div>
+</div>
+
+<style>
+    .form-container {
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .form-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text-color);
+        margin-bottom: 10px;
+    }
+
+    .form-subtitle {
+        color: #777;
+        margin-bottom: 30px;
+    }
+
+    .input-wrapper {
+        position: relative;
+        margin-bottom: 20px;
+    }
+
+    .input-icon {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #aaa;
+    }
+
+    .form-control {
+        border: 1px solid var(--input-border-color);
+        border-radius: 8px;
+        padding: 12px 12px 12px 40px; /* Left padding for icon */
+        height: 50px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(106, 90, 249, 0.2);
+        outline: none;
+    }
+
+    .form-options {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        font-size: 14px;
+    }
+    
+    .form-check-input {
+        border-color: var(--input-border-color);
+    }
+    
+    .form-check-input:checked {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+
+    .forgot-password, .alternative-action a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    .forgot-password:hover, .alternative-action a:hover {
+        text-decoration: underline;
+    }
+
+    .btn-submit {
+        width: 100%;
+        background-color: var(--primary-color);
+        border: none;
+        border-radius: 8px;
+        padding: 14px;
+        font-size: 16px;
+        font-weight: 600;
+        transition: background-color 0.2s;
+    }
+
+    .btn-submit:hover {
+        background-color: #5847d8;
+    }
+    
+    .alternative-action {
+        text-align: center;
+        margin-top: 25px;
+        font-size: 14px;
+    }
+</style>
+
+@code {
+    [SupplyParameterFromForm]
+    public InputModel Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Clear the existing external cookie to ensure a clean login process
+        // This is typically not needed for Blazor Server apps
+    }
+
+    public async Task LoginUser()
+    {
+        var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+        
+        if (result.Succeeded)
+        {
+            Logger.LogInformation("User logged in.");
+            Navigation.NavigateTo(ReturnUrl ?? "/", forceLoad: true);
+        }
+        else if (result.RequiresTwoFactor)
+        {
+            Navigation.NavigateTo($"/Account/LoginWith2fa?returnUrl={ReturnUrl}&rememberMe={Input.RememberMe}");
+        }
+        else if (result.IsLockedOut)
+        {
+            Logger.LogWarning("User account locked out.");
+            Navigation.NavigateTo("/Account/Lockout");
+        }
+        else
+        {
+            // Invalid login attempt
+            Logger.LogWarning("Invalid login attempt.");
+            // You might want to show an error message here
+        }
+    }
+
+    public sealed class InputModel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        [Display(Name = "Remember me?")]
+        public bool RememberMe { get; set; }
+    }
+}

@@ -1,30 +1,190 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">CallCenterBilling.BlazorWeb</a>
-    </div>
-</div>
+﻿@* Components/Layout/NavMenu.razor *@
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+<CascadingAuthenticationState>
+    <AuthorizeView>
+        <Authorized>
+            <MudNavMenu Rounded="true" Margin="Margin.Dense" Color="Color.Secondary" Class="pa-2">
+                @foreach (var menuItem in _accessibleMenuItems)
+                {
+                    @if (menuItem.Children?.Any() == true)
+                    {
+                        <MudNavGroup Title="@menuItem.Name" Icon="@menuItem.Icon" Expanded="@IsSubmenuOpen(menuItem.Name)" ExpandedChanged="@((bool expanded) => OnGroupExpandedChanged(menuItem.Name, expanded))">
+                            
+                            @foreach (var child in menuItem.Children)
+                            {
+                                <MudNavLink Href="@child.Route" Match="@GetNavLinkMatch(child.Route)">
+                                    @child.Name
+                                </MudNavLink>
+                            }
+                        </MudNavGroup>
+                    }
+                    else
+                    {
+                        <MudNavLink Href="@menuItem.Route" Icon="@menuItem.Icon" Match="@GetNavLinkMatch(menuItem.Route)">
+                            @menuItem.Name
+                        </MudNavLink>
+                    }
+                }
+            </MudNavMenu>
+        </Authorized>
+        <NotAuthorized>
+            <MudNavMenu>
+                <MudNavLink Href="" Icon="@Icons.Material.Filled.Home" Match="NavLinkMatch.All">
+                    Home
+                </MudNavLink>
+            </MudNavMenu>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
+@code {
+    private HashSet<string> openSubmenus = new();
+    
+    // This new list will hold only the menu items the user is allowed to see.
+    private List<MenuItem> _accessibleMenuItems = new();
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
+    // Define your menu items here - this is where you configure everything!
+    private List<MenuItem> MenuItems = new()
+    {
+        new MenuItem
+        {
+            Name = "Dashboard",
+            Route = "",
+            Icon = Icons.Material.Filled.Dashboard,
+            Roles = new[] { "Admin", "User", "Manager", "Operator" }
+        },
+        new MenuItem
+        {
+            Name = "Call Management",
+            Icon = Icons.Material.Filled.Phone,
+            Roles = new[] { "Admin", "Manager", "Operator" },
+            Children = new List<MenuItem>
+            {
+                new MenuItem { Name = "Active Calls", Route = "calls/active", Icon = Icons.Material.Filled.PhoneEnabled, Roles = new[] { "Admin", "Manager", "Operator" } },
+                new MenuItem { Name = "Call History", Route = "calls/history", Icon = Icons.Material.Filled.History, Roles = new[] { "Admin", "Manager", "Operator" } },
+                new MenuItem { Name = "Call Reports", Route = "calls/reports", Icon = Icons.Material.Filled.Assessment, Roles = new[] { "Admin", "Manager" } }
+            }
+        },
+        new MenuItem
+        {
+            Name = "Billing",
+            Icon = Icons.Material.Filled.CreditCard,
+            Roles = new[] { "Admin", "Manager" },
+            Children = new List<MenuItem>
+            {
+                new MenuItem { Name = "Generate Bills", Route = "billing/generate", Icon = Icons.Material.Filled.Receipt, Roles = new[] { "Admin", "Manager" } },
+                new MenuItem { Name = "Bill History", Route = "billing/history", Icon = Icons.Material.Filled.Book, Roles = new[] { "Admin", "Manager" } },
+                new MenuItem { Name = "Payment Tracking", Route = "billing/payments", Icon = Icons.Material.Filled.Payments, Roles = new[] { "Admin", "Manager" } }
+            }
+        },
+        new MenuItem
+        {
+            Name = "Agent",
+            Icon = Icons.Material.Filled.People,
+            Roles = new[] { "Admin", "Manager", "Operator" },
+            Children = new List<MenuItem>
+            {
+                new MenuItem { Name = "Agent Dashboard", Route = "agent/dashboard", Icon = Icons.Material.Filled.Dashboard, Roles = new[] { "Admin", "Manager", "Operator" } },
+                new MenuItem { Name = "Agent Activity", Route = "agent/activity", Icon = Icons.Material.Filled.Star, Roles = new[] { "Admin", "Manager" } },
+                new MenuItem { Name = "Agent Management", Route = "agent/management", Icon = Icons.Material.Filled.ManageAccounts, Roles = new[] { "Admin", "Manager" } }
+            }
+        },
+        new MenuItem
+        {
+            Name = "Reports",
+            Icon = Icons.Material.Filled.BarChart,
+            Roles = new[] { "Admin", "Manager" },
+            Children = new List<MenuItem>
+            {
+                new MenuItem { Name = "Daily Reports", Route = "reports/daily", Icon = Icons.Material.Filled.Today, Roles = new[] { "Admin", "Manager" } },
+                new MenuItem { Name = "Monthly Reports", Route = "reports/monthly", Icon = Icons.Material.Filled.CalendarMonth, Roles = new[] { "Admin", "Manager" } },
+                new MenuItem { Name = "Analytics", Route = "reports/analytics", Icon = Icons.Material.Filled.TrendingUp, Roles = new[] { "Admin" } }
+            }
+        },
+        new MenuItem
+        {
+            Name = "Administration",
+            Icon = Icons.Material.Filled.Settings,
+            Roles = new[] { "Admin" },
+            Children = new List<MenuItem>
+            {
+                new MenuItem { Name = "User Management", Route = "admin/users", Icon = Icons.Material.Filled.ManageAccounts, Roles = new[] { "Admin" } },
+                new MenuItem { Name = "System Settings", Route = "admin/settings", Icon = Icons.Material.Filled.Tune, Roles = new[] { "Admin" } },
+                new MenuItem { Name = "Audit Logs", Route = "admin/logs", Icon = Icons.Material.Filled.EventNote, Roles = new[] { "Admin" } }
+            }
+        }
+    };
+    
+    /// <summary>
+    /// When the component initializes, filter the menu items based on the user's roles.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        _accessibleMenuItems = await GetAccessibleMenuItemsAsync(MenuItems);
+    }
+    
+    /// <summary>
+    /// Recursively filters a list of menu items and their children based on user roles.
+    /// </summary>
+    private async Task<List<MenuItem>> GetAccessibleMenuItemsAsync(List<MenuItem> menuItems)
+    {
+        var accessibleItems = new List<MenuItem>();
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-    </nav>
-</div>
+        foreach (var item in menuItems)
+        {
+            // Check if user is authorized to see this item
+            if (item.Roles == null || !item.Roles.Any() || item.Roles.Any(user.IsInRole))
+            {
+                // If item has children, recursively filter them
+                if (item.Children?.Any() == true)
+                {
+                    var accessibleChildren = await GetAccessibleMenuItemsAsync(item.Children);
+                    // Only show parent if it has visible children
+                    if (accessibleChildren.Any())
+                    {
+                        item.Children = accessibleChildren;
+                        accessibleItems.Add(item);
+                    }
+                }
+                else
+                {
+                    // If no children, just add the item
+                    accessibleItems.Add(item);
+                }
+            }
+        }
+        return accessibleItems;
+    }
+    
+    private void OnGroupExpandedChanged(string menuName, bool expanded)
+    {
+        if (expanded)
+            openSubmenus.Add(menuName);
+        else
+            openSubmenus.Remove(menuName);
+    }
 
+    private bool IsSubmenuOpen(string menuName)
+    {
+        return openSubmenus.Contains(menuName);
+    }
+
+    private NavLinkMatch GetNavLinkMatch(string route)
+    {
+        return string.IsNullOrEmpty(route) ? NavLinkMatch.All : NavLinkMatch.Prefix;
+    }
+
+    // MenuItem class to define menu structure
+    public class MenuItem
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Route { get; set; } = string.Empty;
+        public string Icon { get; set; } = string.Empty;
+        public string[]? Roles { get; set; }
+        public List<MenuItem>? Children { get; set; }
+    }
+}

@@ -1,0 +1,98 @@
+@using MudBlazor
+@using CallCenterBilling.Application.DTOs
+@using CallCenterBilling.Application.Services
+@inject IAgentService AgentService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Class="mr-3" />
+            Create New Agent
+        </MudText>
+    </TitleContent>
+    
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="@isValid">
+            <MudTextField 
+                @bind-Value="createAgentDto.Name"
+                Label="Full Name"
+                Required="true"
+                RequiredError="Name is required"
+                Margin="Margin.Dense"
+                Class="mb-3" />
+            
+            <MudTextField 
+                @bind-Value="createAgentDto.Email"
+                Label="Email"
+                Required="true"
+                RequiredError="Email is required"
+                Validation="@(new Func<string, IEnumerable<string>>(EmailAddressAttribute))"
+                Margin="Margin.Dense"
+                Class="mb-3" />
+            
+            <MudTextField 
+                @bind-Value="createAgentDto.PhoneNumber"
+                Label="Phone Number"
+                Margin="Margin.Dense"
+                Class="mb-3" />
+        </MudForm>
+    </DialogContent>
+    
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton 
+            Color="Color.Primary" 
+            Variant="Variant.Filled"
+            Disabled="@(!isValid || isLoading)"
+            OnClick="CreateAgent">
+            @if (isLoading)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Creating...</MudText>
+            }
+            else
+            {
+                <MudText>Create Agent</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialogI { get; set; }
+    
+    
+    private CreateAgentDto createAgentDto = new();
+    private MudForm form;
+    private bool isValid;
+    private bool isLoading;
+
+    private async Task CreateAgent()
+    {
+        if (!isValid) return;
+        
+        isLoading = true;
+        try
+        {
+            await AgentService.CreateAgentAsync(createAgentDto);
+            Snackbar.Add($"Agent '{createAgentDto.Name}' created successfully", Severity.Success);
+            MudDialogI.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating agent: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+         private IEnumerable<string> EmailAddressAttribute(string ch)
+    {
+        if (string.IsNullOrWhiteSpace(ch))
+            yield return "Email cannot be empty";
+    }
+
+    private void Cancel() => MudDialogI.Cancel();
+}

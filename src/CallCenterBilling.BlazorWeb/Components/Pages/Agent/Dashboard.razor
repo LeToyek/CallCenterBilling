@@ -1,0 +1,117 @@
+@page "/Agent/Dashboard"
+@using MudBlazor
+@using CallCenterBilling.Application.DTOs
+@using CallCenterBilling.Application.Services
+@using CallCenterBilling.Application.Interfaces
+
+@inject IAgentService AgentService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<MudContainer Class="mt-16 px-8" MaxWidth="MaxWidth.False">
+    <MudGrid Spacing="4">
+        <!-- Agent Statistics Card -->
+        <MudItem xs="12" sm="6" md="4">
+            <MudPaper Elevation="2" Class="pa-4 d-flex flex-column" Style="height:100%">
+                <MudText Typo="Typo.subtitle1">Active Agents</MudText>
+                <MudText Typo="Typo.h4" Class="my-1">@activeAgentCount/@totalAgentCount</MudText>
+                <div>
+                    <MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Primary" Size="Size.Small" />
+                    <MudText Typo="Typo.body2" Class="d-inline-block">Utilization: @utilizationRate.ToString("F1")%</MudText>
+                </div>
+                <MudProgressLinear 
+                    Color="@GetUtilizationColor(utilizationRate)" 
+                    Value="@utilizationRate" 
+                    Class="my-2" />
+                <MudSpacer />
+                <MudButton 
+                    StartIcon="@Icons.Material.Filled.Settings" 
+                    Variant="Variant.Text" 
+                    Color="Color.Primary"
+                    OnClick="@(() => Navigation.NavigateTo("/agents"))">
+                    Manage Agents
+                </MudButton>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    // Agent data
+    private IEnumerable<AgentDto>? topAgents;
+    private int activeAgentCount;
+    private int totalAgentCount;
+    private double utilizationRate;
+
+    // Existing chart data
+    private List<ChartSeries> callVolumeSeries = new List<ChartSeries>()
+    {
+        new ChartSeries() { Name = "Calls", Data = new double[] { 45, 78, 92, 110, 125, 98, 87, 95, 110, 134, 145, 156, 142, 138, 125, 118, 105, 89, 76, 65, 52, 43, 38, 35 } }
+    };
+    private string[] hourLabels = { "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23" };
+
+    private double[] callTypesSeries = { 45, 25, 15, 10, 5 };
+    private string[] callTypesLabels = { "Support", "Sales", "Billing", "Technical", "Other" };
+
+    private double[] billingSeries = { 89230, 12450, 3120 };
+    private string[] billingLabels = { "Paid", "Outstanding", "Overdue" };
+
+    private ChartOptions barChartOptions = new ChartOptions()
+    {
+        YAxisTicks = 5
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            await LoadTopAgents();
+            await LoadAgentStats();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading dashboard data: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadTopAgents()
+    {
+        topAgents = await AgentService.GetTopPerformingAgentsAsync(6);
+        StateHasChanged();
+    }
+
+    private async Task LoadAgentStats()
+    {
+        activeAgentCount = await AgentService.GetActiveAgentCountAsync();
+        totalAgentCount = await AgentService.GetTotalAgentCountAsync();
+        utilizationRate = await AgentService.GetUtilizationRateAsync();
+        StateHasChanged();
+    }
+
+    private Color GetStatusColor(string status)
+    {
+        return status switch
+        {
+            "Active" => Color.Success,
+            "OnBreak" => Color.Warning,
+            "Offline" => Color.Default,
+            "InCall" => Color.Primary,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetUtilizationColor(double rate)
+    {
+        return rate switch
+        {
+            >= 80 => Color.Success,
+            >= 60 => Color.Warning,
+            _ => Color.Error
+        };
+    }
+}

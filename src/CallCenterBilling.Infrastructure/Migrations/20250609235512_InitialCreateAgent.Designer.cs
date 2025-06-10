@@ -4,6 +4,7 @@ using CallCenterBilling.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CallCenterBilling.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250609235512_InitialCreateAgent")]
+    partial class InitialCreateAgent
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -73,7 +76,7 @@ namespace CallCenterBilling.Infrastructure.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2025, 5, 11, 0, 3, 15, 217, DateTimeKind.Utc).AddTicks(7466),
+                            CreatedAt = new DateTime(2025, 5, 10, 23, 55, 9, 872, DateTimeKind.Utc).AddTicks(9010),
                             Email = "sarah.johnson@company.com",
                             Name = "Sarah Johnson",
                             Rating = 5.0,
@@ -84,7 +87,7 @@ namespace CallCenterBilling.Infrastructure.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2025, 5, 16, 0, 3, 15, 217, DateTimeKind.Utc).AddTicks(7861),
+                            CreatedAt = new DateTime(2025, 5, 15, 23, 55, 9, 872, DateTimeKind.Utc).AddTicks(9395),
                             Email = "mike.chen@company.com",
                             Name = "Mike Chen",
                             Rating = 5.0,
@@ -95,7 +98,7 @@ namespace CallCenterBilling.Infrastructure.Migrations
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2025, 5, 21, 0, 3, 15, 217, DateTimeKind.Utc).AddTicks(7868),
+                            CreatedAt = new DateTime(2025, 5, 20, 23, 55, 9, 872, DateTimeKind.Utc).AddTicks(9402),
                             Email = "lisa.rodriguez@company.com",
                             Name = "Lisa Rodriguez",
                             Rating = 4.0,
@@ -106,7 +109,7 @@ namespace CallCenterBilling.Infrastructure.Migrations
                         new
                         {
                             Id = 4,
-                            CreatedAt = new DateTime(2025, 5, 26, 0, 3, 15, 217, DateTimeKind.Utc).AddTicks(7870),
+                            CreatedAt = new DateTime(2025, 5, 25, 23, 55, 9, 872, DateTimeKind.Utc).AddTicks(9405),
                             Email = "david.smith@company.com",
                             Name = "David Smith",
                             Rating = 4.0,
@@ -117,7 +120,7 @@ namespace CallCenterBilling.Infrastructure.Migrations
                         new
                         {
                             Id = 5,
-                            CreatedAt = new DateTime(2025, 5, 31, 0, 3, 15, 217, DateTimeKind.Utc).AddTicks(7871),
+                            CreatedAt = new DateTime(2025, 5, 30, 23, 55, 9, 872, DateTimeKind.Utc).AddTicks(9407),
                             Email = "emma.wilson@company.com",
                             Name = "Emma Wilson",
                             Rating = 4.0,
@@ -128,7 +131,7 @@ namespace CallCenterBilling.Infrastructure.Migrations
                         new
                         {
                             Id = 6,
-                            CreatedAt = new DateTime(2025, 6, 5, 0, 3, 15, 217, DateTimeKind.Utc).AddTicks(7873),
+                            CreatedAt = new DateTime(2025, 6, 4, 23, 55, 9, 872, DateTimeKind.Utc).AddTicks(9409),
                             Email = "alex.brown@company.com",
                             Name = "Alex Brown",
                             Rating = 4.0,

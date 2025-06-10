@@ -1,0 +1,237 @@
+@* Pages/Account/Register.razor *@
+@page "/Account/Register"
+@layout AuthLayout
+@using System.ComponentModel.DataAnnotations
+
+<div class="form-container">
+    <h3 class="form-title">Create Your Account</h3>
+    
+    <button type="button" class="btn btn-google">
+        <img src="https://www.google.com/favicon.ico" alt="Google icon" class="google-icon" />
+        Sign Up with Google
+    </button>
+
+    <div class="separator">OR</div>
+
+    <EditForm Model="Input" OnValidSubmit="RegisterUser" FormName="register">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" role="alert" />
+
+        <div class="input-wrapper">
+            <i class="fa-regular fa-user input-icon"></i>
+            <InputText @bind-Value="Input.Name" class="form-control" autocomplete="name" placeholder="Your Name" />
+            <ValidationMessage For="() => Input.Name" class="text-danger" />
+        </div>
+
+        <div class="input-wrapper">
+            <i class="fa-regular fa-envelope input-icon"></i>
+            <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" placeholder="Your Email" />
+            <ValidationMessage For="() => Input.Email" class="text-danger" />
+        </div>
+
+        <div class="input-wrapper">
+            <i class="fa-solid fa-lock input-icon"></i>
+            <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="new-password" placeholder="Password" />
+            <small class="form-text text-muted">Must be 8 characters at least.</small>
+            <ValidationMessage For="() => Input.Password" class="text-danger" />
+        </div>
+
+        <div class="form-check terms-check">
+            <InputCheckbox @bind-Value="Input.AgreeToTerms" id="terms" class="form-check-input" />
+            <label class="form-check-label" for="terms">
+                I agree to the <a href="/terms">Terms & Conditions</a>
+            </label>
+        </div>
+        <ValidationMessage For="() => Input.AgreeToTerms" class="text-danger" />
+
+
+        <button type="submit" class="btn btn-primary btn-submit">Register</button>
+    </EditForm>
+
+    <div class="alternative-action">
+        <span>Already have an account? <a href="/Account/Login">Sign In</a></span>
+    </div>
+</div>
+
+<style>
+    /* Most styles are inherited from Login.razor's scoped CSS via the layout,
+       but we can add specific styles for the register page here. */
+    .form-container {
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .form-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text-color);
+        margin-bottom: 25px;
+        text-align: left;
+    }
+
+    .btn-google {
+        width: 100%;
+        padding: 12px;
+        background-color: #fff;
+        border: 1px solid var(--input-border-color);
+        border-radius: 8px;
+        font-weight: 500;
+        color: var(--text-color);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        transition: background-color 0.2s;
+    }
+    
+    .btn-google:hover {
+        background-color: #f7f7f7;
+    }
+
+    .google-icon {
+        width: 20px;
+        height: 20px;
+    }
+
+    .separator {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        color: #aaa;
+        margin: 25px 0;
+    }
+
+    .separator::before,
+    .separator::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid var(--input-border-color);
+    }
+
+    .separator:not(:empty)::before {
+        margin-right: .5em;
+    }
+
+    .separator:not(:empty)::after {
+        margin-left: .5em;
+    }
+    
+    .input-wrapper {
+        position: relative;
+        margin-bottom: 20px;
+    }
+
+    .input-wrapper .form-text {
+        padding-left: 5px;
+    }
+
+    .input-icon {
+        position: absolute;
+        left: 15px;
+        top: 17px; /* Adjust for taller inputs */
+        transform: translateY(-50%);
+        color: #aaa;
+    }
+
+    .form-control {
+        border: 1px solid var(--input-border-color);
+        border-radius: 8px;
+        padding: 12px 12px 12px 40px; /* Left padding for icon */
+        height: 50px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(106, 90, 249, 0.2);
+        outline: none;
+    }
+
+    .terms-check {
+        margin-bottom: 25px;
+        font-size: 14px;
+    }
+    
+    .terms-check a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .form-check-input {
+        border-color: var(--input-border-color);
+    }
+    
+    .form-check-input:checked {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+    
+    .btn-submit {
+        width: 100%;
+        background-color: var(--primary-color);
+        border: none;
+        border-radius: 8px;
+        padding: 14px;
+        font-size: 16px;
+        font-weight: 600;
+        transition: background-color 0.2s;
+    }
+
+    .btn-submit:hover {
+        background-color: #5847d8;
+    }
+    
+    .alternative-action {
+        text-align: center;
+        margin-top: 25px;
+        font-size: 14px;
+    }
+
+    .alternative-action a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+    }
+</style>
+
+@code {
+    [SupplyParameterFromForm]
+    public InputModel Input { get; set; } = new();
+
+    // Inject UserManager and other services as needed
+    // @inject UserManager<ApplicationUser> UserManager
+    // @inject NavigationManager Navigation
+
+    private void RegisterUser()
+    {
+        // Your user creation logic here
+        // var user = new ApplicationUser { UserName = Input.Email, Email = Input.Email, Name = Input.Name };
+        // var result = await UserManager.CreateAsync(user, Input.Password);
+        // if (result.Succeeded) { ... }
+        Console.WriteLine($"Registering user {Input.Name} with email {Input.Email}");
+    }
+
+    public sealed class InputModel
+    {
+        [Required]
+        [Display(Name = "Your Name")]
+        public string Name { get; set; } = "";
+
+        [Required]
+        [EmailAddress]
+        [Display(Name = "Your Email")]
+        public string Email { get; set; } = "";
+
+        [Required]
+        [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 8)]
+        [DataType(DataType.Password)]
+        [Display(Name = "Password")]
+        public string Password { get; set; } = "";
+
+        [Required]
+        [Range(typeof(bool), "true", "true", ErrorMessage = "You must agree to the terms and conditions.")]
+        [Display(Name = "Agree to Terms")]
+        public bool AgreeToTerms { get; set; }
+    }
+}

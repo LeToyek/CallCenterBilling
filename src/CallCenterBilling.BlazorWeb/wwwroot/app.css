@@ -1,5 +1,18 @@
+:root {
+        --primary-color: #6a5af9;
+        --dark-bg: #1a163a;
+        --light-grey: #f0f0f0;
+        --text-color: #333;
+        --input-border-color: #e0e0e0;
+    }
+    
+
+
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Poppins', sans-serif;
+    height: 100%;
+    margin: 0;
+    padding: 0;
 }
 
 a, .btn-link {

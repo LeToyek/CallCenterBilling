@@ -1,9 +1,198 @@
 ﻿@page "/"
-@attribute [Authorize]
-@using Microsoft.AspNetCore.Authorization
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+@page "/dashboard"
+@using MudBlazor
 
-Welcome to your new app.
+<MudContainer Class="mt-16 px-8" MaxWidth="MaxWidth.False">
+    <MudGrid Spacing="4">
+        <MudItem xs="12" sm="6" md="4">
+            <MudPaper Elevation="2" Class="pa-4 d-flex flex-column" Style="height:100%">
+                <MudText Typo="Typo.subtitle1">Total Calls Today</MudText>
+                <MudText Typo="Typo.h4" Class="my-1">1,247</MudText>
+                <div>
+                    <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Color="Color.Success" Size="Size.Small" />
+                    <MudText Typo="Typo.body2" Color="Color.Success" Class="d-inline-block">+12% from yesterday</MudText>
+                </div>
+                <MudSpacer />
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="4">
+            <MudPaper Elevation="2" Class="pa-4 d-flex flex-column" Style="height:100%">
+                <MudText Typo="Typo.subtitle1">Revenue This Month</MudText>
+                <MudText Typo="Typo.h4" Class="my-1">$24,567</MudText>
+                <div>
+                    <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Color="Color.Success" Size="Size.Small" />
+                    <MudText Typo="Typo.body2" Color="Color.Success" Class="d-inline-block">+8.2% from last month</MudText>
+                </div>
+                <MudSpacer />
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="12" md="4">
+            <MudPaper Elevation="2" Class="pa-4 d-flex flex-column" Style="height:100%">
+                <MudText Typo="Typo.subtitle1">Active Agents</MudText>
+                <MudText Typo="Typo.h4" Class="my-1">24/32</MudText>
+                <MudText Typo="Typo.body2">Utilization: 75%</MudText>
+                <MudProgressLinear Color="Color.Success" Value="75" Class="my-2" />
+                <MudSpacer />
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="8">
+            <MudGrid Spacing="4">
+                <MudItem xs="12">
+                    <MudPaper Elevation="2" Class="pa-4" Style="height:100%">
+                        <MudText Typo="Typo.h6">Call Volume by Hour</MudText>
+                        <MudChart ChartType="ChartType.Bar" ChartSeries="@callVolumeSeries" XAxisLabels="@hourLabels" Width="100%" Height="300px" ChartOptions="@barChartOptions" />
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudPaper Elevation="2" Class="pa-4" Style="height:100%">
+                        <MudText Typo="Typo.h6">Call Types Distribution</MudText>
+                        <MudChart ChartType="ChartType.Pie" InputData="@callTypesSeries" InputLabels="@callTypesLabels" Width="100%" Height="250px" />
+                    </MudPaper>
+                </MudItem>
+                 <MudItem xs="12" sm="6">
+                    <MudPaper Elevation="2" Class="pa-4" Style="height:100%">
+                        <MudText Typo="Typo.h6">Billing Status</MudText>
+                        <MudChart ChartType="ChartType.Donut" InputData="@billingSeries" InputLabels="@billingLabels" Width="100%" Height="170px" />
+                        <MudSimpleTable Dense="true">
+                            <tbody>
+                                <tr><td>Outstanding:</td><td>$12,450</td></tr>
+                                <tr><td>Paid:</td><td>$89,230</td></tr>
+                                <tr><td>Overdue:</td><td>$3,120</td></tr>
+                            </tbody>
+                        </MudSimpleTable>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
+                <MudText Typo="Typo.h6" Class="mb-3">Top Performing Agents</MudText>
+                <MudSimpleTable Hover="true" Dense="true">
+                    <thead>
+                        <tr><th>Agent</th><th>Calls</th><th>Revenue</th><th>Rating</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var agent in topAgents)
+                        {
+                            <tr>
+                                <td>
+                                    <MudAvatar Color="Color.Primary" Size="Size.Small" Class="mr-2">@agent.Name.Substring(0, 1)</MudAvatar>
+                                    @agent.Name
+                                </td>
+                                <td>@agent.Calls</td>
+                                <td>$@agent.Revenue</td>
+                                <td><MudRating ReadOnly="true" SelectedValue="@agent.Rating" Size="Size.Small" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="4">
+             <MudPaper Elevation="2" Class="pa-4" Style="height:100%">
+                <MudText Typo="Typo.h6">Avg Call Duration</MudText>
+                <MudText Typo="Typo.h3" Class="my-2">4:32</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Error">+15s from yesterday</MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="8">
+             <MudPaper Elevation="2" Class="pa-4" Style="height:100%">
+                <MudText Typo="Typo.h6">Customer Satisfaction</MudText>
+                <MudText Typo="Typo.h3" Class="my-2">4.6/5</MudText>
+                <MudProgressLinear Color="Color.Success" Value="92" Class="my-1"/>
+                <MudText Typo="Typo.body2">92% satisfaction rate</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    // Call trend data
+    private List<ChartSeries> callTrendSeries = new List<ChartSeries>()
+    {
+        new ChartSeries() { Name = "Calls", Data = new double[] { 1100, 1150, 1200, 1180, 1247 } }
+    };
+    private string[] callTrendLabels = { "Mon", "Tue", "Wed", "Thu", "Fri" };
+
+    // Revenue trend data
+    private List<ChartSeries> revenueTrendSeries = new List<ChartSeries>()
+    {
+        new ChartSeries() { Name = "Revenue", Data = new double[] { 22000, 23000, 22500, 24000, 24567 } }
+    };
+    private string[] revenueTrendLabels = { "Week 1", "Week 2", "Week 3", "Week 4", "Current" };
+
+    // Agent status data
+    private double[] agentStatusSeries = { 24, 5, 3 };
+    private string[] agentStatusLabels = { "Active", "On Break", "Offline" };
+
+    // Call volume by hour
+    private List<ChartSeries> callVolumeSeries = new List<ChartSeries>()
+    {
+        new ChartSeries() { Name = "Calls", Data = new double[] { 45, 78, 92, 110, 125, 98, 87, 95, 110, 134, 145, 156, 142, 138, 125, 118, 105, 89, 76, 65, 52, 43, 38, 35 } }
+    };
+    private string[] hourLabels = { "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23" };
+
+    // Call types data
+    private double[] callTypesSeries = { 45, 25, 15, 10, 5 };
+    private string[] callTypesLabels = { "Support", "Sales", "Billing", "Technical", "Other" };
+
+    // Billing status data
+    private double[] billingSeries = { 89230, 12450, 3120 };
+    private string[] billingLabels = { "Paid", "Outstanding", "Overdue" };
+
+    // Duration trend data
+    private List<ChartSeries> durationTrendSeries = new List<ChartSeries>()
+    {
+        new ChartSeries() { Name = "Duration", Data = new double[] { 4.2, 4.3, 4.1, 4.4, 4.5 } }
+    };
+    private string[] durationLabels = { "Mon", "Tue", "Wed", "Thu", "Fri" };
+
+    // Satisfaction data
+    private List<ChartSeries> satisfactionSeries = new List<ChartSeries>()
+    {
+        new ChartSeries() { Name = "Satisfaction", Data = new double[] { 4.2, 4.4, 4.5, 4.3, 4.6 } }
+    };
+    private string[] satisfactionLabels = { "Jan", "Feb", "Mar", "Apr", "May" };
+
+    // Top agents data
+    private List<AgentPerformance> topAgents = new List<AgentPerformance>()
+    {
+        new AgentPerformance { Name = "Sarah Johnson", Calls = 89, Revenue = 2150, Rating = 5 },
+        new AgentPerformance { Name = "Mike Chen", Calls = 76, Revenue = 1980, Rating = 5 },
+        new AgentPerformance { Name = "Lisa Rodriguez", Calls = 82, Revenue = 1840, Rating = 4 },
+        new AgentPerformance { Name = "David Smith", Calls = 71, Revenue = 1720, Rating = 4 },
+        new AgentPerformance { Name = "Emma Wilson", Calls = 68, Revenue = 1650, Rating = 4 },
+        new AgentPerformance { Name = "Alex Brown", Calls = 65, Revenue = 1580, Rating = 4 }
+    };
+
+    // Chart options
+    private ChartOptions smallChartOptions = new ChartOptions()
+    {
+        @* DisableLegend = true, *@
+        YAxisTicks = 0,
+        @* XAxisLabels = false *@
+    };
+
+    private ChartOptions barChartOptions = new ChartOptions()
+    {
+        @* DisableLegend = true, *@
+        YAxisTicks = 5
+    };
+
+    public class AgentPerformance
+    {
+        public string Name { get; set; }
+        public int Calls { get; set; }
+        public int Revenue { get; set; }
+        public int Rating { get; set; }
+    }
+}

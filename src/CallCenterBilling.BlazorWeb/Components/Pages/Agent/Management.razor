@@ -1,0 +1,300 @@
+
+@page "/Agent/Management"
+@using MudBlazor
+@using CallCenterBilling.Application.DTOs
+@using CallCenterBilling.Application.Services
+@using CallCenterBilling.Application.Interfaces
+@using CallCenterBilling.Domain.Entities
+
+@inject IAgentService AgentService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Agent Management</PageTitle>
+
+<MudContainer Class="mt-16 px-8" MaxWidth="MaxWidth.False">
+    <MudPaper Class="pa-4">
+        <div class="d-flex justify-space-between align-center mb-4">
+            <MudText Typo="Typo.h4">Agent Management</MudText>
+            <div>
+                <MudButton 
+                    StartIcon="@Icons.Material.Filled.Add" 
+                    Color="Color.Primary" 
+                    Variant="Variant.Filled"
+                    OnClick="OpenCreateDialog">
+                    Add Agent
+                </MudButton>
+                <MudButton 
+                    StartIcon="@Icons.Material.Filled.Refresh" 
+                    Color="Color.Secondary" 
+                    Variant="Variant.Outlined"
+                    Class="ml-2"
+                    OnClick="LoadAgents">
+                    Refresh
+                </MudButton>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <MudGrid Class="mb-4" Spacing="2">
+            <MudItem xs="12" sm="3">
+                <MudCard>
+                    <MudCardContent Class="text-center">
+                        <MudText Typo="Typo.h6" Color="Color.Success">@activeAgents</MudText>
+                        <MudText Typo="Typo.body2">Active Agents</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudCard>
+                    <MudCardContent Class="text-center">
+                        <MudText Typo="Typo.h6" Color="Color.Warning">@onBreakAgents</MudText>
+                        <MudText Typo="Typo.body2">On Break</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudCard>
+                    <MudCardContent Class="text-center">
+                        <MudText Typo="Typo.h6" Color="Color.Default">@offlineAgents</MudText>
+                        <MudText Typo="Typo.body2">Offline</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudCard>
+                    <MudCardContent Class="text-center">
+                        <MudText Typo="Typo.h6" Color="Color.Primary">@totalAgents</MudText>
+                        <MudText Typo="Typo.body2">Total Agents</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Agents Table -->
+        <MudTable 
+            Items="@agents" 
+            Hover="true" 
+            Striped="true" 
+            Dense="true"
+            Loading="@loading"
+            Filter="new Func<AgentDto, bool>(FilterFunc)">
+            
+            <ToolBarContent>
+                <MudText Typo="Typo.h6">Agents</MudText>
+                <MudSpacer />
+                <MudTextField 
+                    @bind-Value="searchString" 
+                    Placeholder="Search agents..." 
+                    Adornment="Adornment.Start" 
+                    AdornmentIcon="@Icons.Material.Filled.Search" 
+                    IconSize="Size.Medium" 
+                    Class="mt-0" />
+            </ToolBarContent>
+            
+            <HeaderContent>
+                <MudTh>Agent</MudTh>
+                <MudTh>Email</MudTh>
+                <MudTh>Phone</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Total Calls</MudTh>
+                <MudTh>Revenue</MudTh>
+                <MudTh>Rating</MudTh>
+                <MudTh>Last Active</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            
+            <RowTemplate>
+                <MudTd>
+                    <div class="d-flex align-center">
+                        <MudAvatar Color="Color.Primary" Size="Size.Small" Class="mr-3">
+                            @context.Name.Substring(0, 1)
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.body2" Class="font-weight-bold">@context.Name</MudText>
+                            <MudText Typo="Typo.caption">ID: @context.Id</MudText>
+                        </div>
+                    </div>
+                </MudTd>
+                <MudTd>@context.Email</MudTd>
+                <MudTd>@(context.PhoneNumber ?? "N/A")</MudTd>
+                <MudTd>
+                    <MudSelect 
+                        T="string" 
+                        Value="@context.Status" 
+                        ValueChanged="@((string value) => UpdateAgentStatus(context.Id, value))"
+                        Dense="true"
+                        Margin="Margin.None">
+                        <MudSelectItem Value="@("Active")">
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" Class="mr-2" />
+                                Active
+                            </div>
+                        </MudSelectItem>
+                        <MudSelectItem Value="@("OnBreak")">
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@Icons.Material.Filled.Pause" Color="Color.Warning" Size="Size.Small" Class="mr-2" />
+                                On Break
+                            </div>
+                        </MudSelectItem>
+                        <MudSelectItem Value="@("Offline")">
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@Icons.Material.Filled.RadioButtonUnchecked" Color="Color.Default" Size="Size.Small" Class="mr-2" />
+                                Offline
+                            </div>
+                        </MudSelectItem>
+                    </MudSelect>
+                </MudTd>
+                <MudTd>@context.TotalCalls</MudTd>
+                <MudTd>$@context.TotalRevenue.ToString("N0")</MudTd>
+                <MudTd>
+                    <MudRating ReadOnly="true" SelectedValue="@((int)context.Rating)" Size="Size.Small" />
+                </MudTd>
+                <MudTd>
+                    @if (context.LastActiveAt.HasValue)
+                    {
+                        <MudText Typo="Typo.caption">@context.LastActiveAt.Value.ToString("MMM dd, HH:mm")</MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Never</MudText>
+                    }
+                </MudTd>
+                <MudTd>
+                    <MudIconButton 
+                        Icon="@Icons.Material.Filled.Edit" 
+                        Color="Color.Primary" 
+                        Size="Size.Small"
+                        OnClick="@(() => OpenEditDialog(context))" />
+                    <MudIconButton 
+                        Icon="@Icons.Material.Filled.Delete" 
+                        Color="Color.Error" 
+                        Size="Size.Small"
+                        OnClick="@(() => DeleteAgent(context))" />
+                </MudTd>
+            </RowTemplate>
+            
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private IEnumerable<AgentDto> agents = new List<AgentDto>();
+    private string searchString = "";
+    private bool loading = true;
+    
+    // Statistics
+    private int activeAgents;
+    private int onBreakAgents;
+    private int offlineAgents;
+    private int totalAgents;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAgents();
+    }
+
+    private async Task LoadAgents()
+    {
+        loading = true;
+        try
+        {
+            agents = await AgentService.GetAllAgentsAsync();
+            UpdateStatistics();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading agents: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void UpdateStatistics()
+    {
+        activeAgents = agents.Count(a => a.Status == "Active");
+        onBreakAgents = agents.Count(a => a.Status == "OnBreak");
+        offlineAgents = agents.Count(a => a.Status == "Offline");
+        totalAgents = agents.Count();
+    }
+
+    private bool FilterFunc(AgentDto agent)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        
+        return agent.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+               agent.Email.Contains(searchString, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task UpdateAgentStatus(int agentId, string newStatus)
+    {
+        try 
+        {
+            if (Enum.TryParse<AgentStatus>(newStatus, out var status))
+            {
+                await AgentService.UpdateAgentStatusAsync(agentId, status);
+                await LoadAgents();
+                Snackbar.Add($"Agent status updated to {newStatus}", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating agent status: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters();
+        var dialog = await DialogService.ShowAsync<CreateAgentDialog>("Create New Agent", parameters);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled)
+        {
+            await LoadAgents();
+        }
+    }
+
+    private async Task OpenEditDialog(AgentDto agent)
+    {
+        var parameters = new DialogParameters { ["Agent"] = agent };
+        var dialog = await DialogService.ShowAsync<EditAgentDialog>("Edit Agent", parameters);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled)
+        {
+            await LoadAgents();
+        }
+    }
+
+    private async Task DeleteAgent(AgentDto agent)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", $"Are you sure you want to delete agent '{agent.Name}'? This action cannot be undone.");
+        parameters.Add("ButtonText", "Delete");
+        parameters.Add("Color", Color.Error);
+
+        var dialog = await DialogService.ShowAsync<MudDialog>("Delete Agent", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                await AgentService.DeleteAgentAsync(agent.Id);
+                await LoadAgents();
+                Snackbar.Add($"Agent '{agent.Name}' deleted successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting agent: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

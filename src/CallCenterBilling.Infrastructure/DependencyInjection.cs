@@ -18,8 +18,11 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         // Database
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+        services.AddDbContext<ApplicationDbContext>((options) =>
+        {
+            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
+            options.ConfigureWarnings(warnings => { warnings.Log(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning); });
+        });
 
         // Identity
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -34,7 +37,7 @@ public static class DependencyInjection
             // User settings
             options.User.RequireUniqueEmail = true;
             options.SignIn.RequireConfirmedEmail = false;
-            
+
             // Lockout settings
             options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             options.Lockout.MaxFailedAccessAttempts = 5;
@@ -54,9 +57,11 @@ public static class DependencyInjection
 
         // Repositories
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+        services.AddScoped<IAgentRepository, AgentRepository>();
 
         // Services
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IAgentService, AgentService>();
 
         return services;
     }
